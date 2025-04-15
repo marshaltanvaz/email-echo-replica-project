@@ -1,4 +1,3 @@
-
 import { EmailMessageProps } from "@/components/EmailMessage";
 
 // Generate a random string for the email username

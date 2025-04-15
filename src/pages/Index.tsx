@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import EmailBox from '@/components/EmailBox';
 import InboxView from '@/components/InboxView';
 import Footer from '@/components/Footer';
-import { generateRandomEmail, generateMockMessages, EmailMessageProps } from '@/services/emailService';
+import { generateRandomEmail, generateMockMessages } from '@/services/emailService';
+import { EmailMessageProps } from '@/components/EmailMessage';
 
 const Index = () => {
   const [email, setEmail] = useState<string>('');

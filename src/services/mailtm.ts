@@ -1,104 +1,45 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://api.mail.tm';
+const API_BASE = 'https://api.mail.tm';
 
-interface Account {
-  address: string;
-  password: string;
-  token?: string;
-}
+export const mailTMService = {
+  async createAccount() {
+    const password = 'TestPass123!';
+    const timestamp = Date.now();
 
-interface Message {
-  id: string;
-  from: {
-    address: string;
-    name: string;
-  };
-  subject: string;
-  intro: string;
-  html: string[];
-  text: string[];
-  createdAt: string;
-}
-
-class MailTMService {
-  private account: Account | null = null;
-
-  async createAccount(): Promise<Account> {
     try {
-      const response = await axios.post(`${BASE_URL}/accounts`, {
-        address: `user${Math.random().toString(36).substring(2, 10)}@mail.tm`,
-        password: Math.random().toString(36).substring(2, 10)
+      // 1. Get a valid domain
+      const domainRes = await axios.get(`${API_BASE}/domains`);
+      const domain = domainRes.data['hydra:member'][0]?.domain;
+
+      if (!domain) throw new Error('No valid Mail.tm domains found.');
+
+      const email = `user${timestamp}@${domain}`;
+
+      // 2. Create account
+      await axios.post(`${API_BASE}/accounts`, {
+        address: email,
+        password,
       });
+
+      // 3. Login
+      const loginRes = await axios.post(`${API_BASE}/token`, {
+        address: email,
+        password,
+      });
+
+      const token = loginRes.data.token;
       
-      this.account = response.data;
-      return this.account;
-    } catch (error) {
-      console.error('Error creating account:', error);
-      throw error;
+      // Store token in localStorage
+      localStorage.setItem('mailtm_token', token);
+
+      console.log('✅ Email created:', email);
+      console.log('🔐 Access Token:', token);
+
+      return { email, token };
+    } catch (err: any) {
+      console.error('❌ Mail.tm error:', err.response?.data || err.message);
+      throw err;
     }
   }
-
-  async getToken(): Promise<string> {
-    if (!this.account) {
-      throw new Error('No account created');
-    }
-
-    try {
-      const response = await axios.post(`${BASE_URL}/token`, {
-        address: this.account.address,
-        password: this.account.password
-      });
-
-      this.account.token = response.data.token;
-      return this.account.token;
-    } catch (error) {
-      console.error('Error getting token:', error);
-      throw error;
-    }
-  }
-
-  async getMessages(): Promise<Message[]> {
-    if (!this.account?.token) {
-      throw new Error('No token available');
-    }
-
-    try {
-      const response = await axios.get(`${BASE_URL}/messages`, {
-        headers: {
-          Authorization: `Bearer ${this.account.token}`
-        }
-      });
-
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      throw error;
-    }
-  }
-
-  async getMessageById(id: string): Promise<Message> {
-    if (!this.account?.token) {
-      throw new Error('No token available');
-    }
-
-    try {
-      const response = await axios.get(`${BASE_URL}/messages/${id}`, {
-        headers: {
-          Authorization: `Bearer ${this.account.token}`
-        }
-      });
-
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching message:', error);
-      throw error;
-    }
-  }
-
-  getCurrentAccount(): Account | null {
-    return this.account;
-  }
-}
-
-export const mailTMService = new MailTMService(); 
+};

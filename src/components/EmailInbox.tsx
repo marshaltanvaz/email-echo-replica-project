@@ -3,23 +3,36 @@ import { mailTMService } from '../services/mailtm';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
+import { useToast } from './ui/use-toast';
 
 export function EmailInbox() {
   const [email, setEmail] = useState<string>('');
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const generateEmail = async () => {
     try {
       setLoading(true);
       setError(null);
+      console.log('Creating new Mail.tm account...');
       const account = await mailTMService.createAccount();
-      await mailTMService.getToken();
+      console.log('Account created:', account);
       setEmail(account.address);
+      toast({
+        title: "Success",
+        description: "Temporary email created successfully!",
+      });
     } catch (err) {
-      setError('Failed to generate email');
-      console.error(err);
+      console.error('Error in generateEmail:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate email';
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -31,21 +44,41 @@ export function EmailInbox() {
     try {
       setLoading(true);
       setError(null);
+      console.log('Fetching messages for email:', email);
       const messages = await mailTMService.getMessages();
+      console.log('Messages fetched:', messages);
       setMessages(messages);
     } catch (err) {
-      setError('Failed to fetch messages');
-      console.error(err);
+      console.error('Error in fetchMessages:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch messages';
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleGenerateNew = async () => {
+    console.log('Generating new email...');
+    mailTMService.clearAccount();
+    setEmail('');
+    setMessages([]);
+    await generateEmail();
+  };
+
   useEffect(() => {
+    console.log('EmailInbox mounted, email:', email);
     if (email) {
       fetchMessages();
       const interval = setInterval(fetchMessages, 10000); // Poll every 10 seconds
-      return () => clearInterval(interval);
+      return () => {
+        console.log('Cleaning up interval');
+        clearInterval(interval);
+      };
     }
   }, [email]);
 
@@ -57,15 +90,20 @@ export function EmailInbox() {
         </CardHeader>
         <CardContent>
           {!email ? (
-            <Button onClick={generateEmail} disabled={loading}>
-              {loading ? 'Generating...' : 'Generate Temporary Email'}
-            </Button>
+            <div className="flex flex-col items-center space-y-4">
+              <Button onClick={generateEmail} disabled={loading}>
+                {loading ? 'Generating...' : 'Generate Temporary Email'}
+              </Button>
+              {error && (
+                <div className="text-red-500 text-sm">{error}</div>
+              )}
+            </div>
           ) : (
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <p className="text-sm font-medium">Your temporary email:</p>
                 <code className="bg-muted px-2 py-1 rounded">{email}</code>
-                <Button variant="outline" onClick={generateEmail}>
+                <Button variant="outline" onClick={handleGenerateNew}>
                   Generate New
                 </Button>
               </div>
@@ -76,7 +114,11 @@ export function EmailInbox() {
 
               <ScrollArea className="h-[400px] rounded-md border">
                 <div className="p-4">
-                  {messages.length === 0 ? (
+                  {loading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    </div>
+                  ) : messages.length === 0 ? (
                     <p className="text-center text-muted-foreground">
                       No messages yet. Emails will appear here automatically.
                     </p>

@@ -7,7 +7,7 @@ import { useToast } from '../components/ui/use-toast';
 import { mailTMService } from '../services/mailtm';
 import axios from 'axios';
 import Header from '../components/Header';
-import Footer from '../components/Footer';
+import { Footer } from '../components/Footer';
 import { Copy, RefreshCw } from 'lucide-react';
 
 export function Index() {
@@ -28,6 +28,7 @@ export function Index() {
       console.log('Account created:', newEmail);
       setEmail(newEmail);
       localStorage.setItem('mailtm_email', newEmail);
+      localStorage.setItem('mailtm_token', token);
       setTimeLeft(30 * 60); // Reset timer
       toast({
         title: "Success",
@@ -58,13 +59,19 @@ export function Index() {
   const fetchMessages = async () => {
     if (!email) return;
     
+    const token = localStorage.getItem('mailtm_token');
+    if (!token) {
+      setError('Authentication token not found. Please generate a new email.');
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
       console.log('Fetching messages for email:', email);
       const response = await axios.get('https://api.mail.tm/messages', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('mailtm_token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       console.log('Messages fetched:', response.data);
@@ -248,20 +255,18 @@ export function Index() {
             <div className="prose prose-sm max-w-none text-gray-600">
               <p>
                 Temp Mail provides a free temporary email address that allows you to receive emails anonymously. 
-                No registration is required – just use the randomly generated email address.
+                Perfect for signing up to websites, testing services, or protecting your privacy online.
               </p>
-              <p className="mt-3">
-                Our service is perfect for:
+              <p className="mt-4">
+                Features:
               </p>
-              <ul className="mt-2 space-y-1">
-                <li>Protecting your primary inbox from spam</li>
-                <li>Signing up for websites requiring email verification</li>
-                <li>Testing email functionality in your applications</li>
-                <li>Keeping your identity private online</li>
+              <ul className="list-disc pl-6 mt-2">
+                <li>Instant disposable email address</li>
+                <li>No registration required</li>
+                <li>Auto-refresh inbox</li>
+                <li>30-minute email validity</li>
+                <li>Secure and private</li>
               </ul>
-              <p className="mt-3">
-                All emails are automatically deleted after 30 minutes to ensure your privacy.
-              </p>
             </div>
           </div>
         </div>
